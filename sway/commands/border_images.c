@@ -19,6 +19,7 @@ static void apply_border_textures_for_class(struct border_textures *class) {
 static struct cmd_results *handle_command(int argc, char **argv, char *cmd_name,
 		struct border_textures *class) {
 	if (!config->active) return cmd_results_new(CMD_DEFER, NULL);
+
 	struct cmd_results *error = NULL;
 	if ((error = checkarg(argc, cmd_name, EXPECTED_EQUAL_TO, 1))) {
 		return error;

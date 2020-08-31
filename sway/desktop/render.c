@@ -334,6 +334,7 @@ static void render_saved_view(struct sway_view *view,
 	// https://github.com/swaywm/sway/pull/4465#discussion_r321082059
 }
 
+
 /**
  * Render a view's surface and left/bottom/right borders.
  */
@@ -1151,6 +1152,7 @@ static void render_floating_container(struct sway_output *soutput,
 			render_top_border(soutput, damage, con, colors);
 		}
 		render_view(soutput, damage, con, colors);
+		render_border_textures_for_container(con, damage);
 	} else {
 		render_container(soutput, damage, con, con->current.focused);
 	}
