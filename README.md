@@ -6,9 +6,9 @@ Please refer to the [Sway GitHub](https://github.com/swaywm/sway/) for docs and 
 
 ## Installation
 The following package distributions exist. If you package sway-borders for another distribution, feel free to PR its entry here.
-|Distribution|Name|Maintainer|Notes|
-|---|---|---|---|
-|AUR|`sway-borders-git`|TheAvidDev|Not created yet, but will be shortly.|
+|Distribution|Name|Maintainer|
+|---|---|---|
+|AUR|`sway-borders-git`|TheAvidDev|
 
 Releases will follow Sway's.
 
