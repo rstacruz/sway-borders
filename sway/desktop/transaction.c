@@ -220,8 +220,8 @@ static void apply_container_state(struct sway_container *container,
 		struct sway_saved_buffer *saved_buf;
 		wl_list_for_each(saved_buf, &view->saved_buffers, link) {
 			struct wlr_box box = {
-				.x = container->current.content_x - view->saved_geometry.x + saved_buf->x - tw,
-				.y = container->current.content_y - view->saved_geometry.y + saved_buf->y - th,
+				.x = saved_buf->x - view->saved_geometry.x - tw,
+				.y = saved_buf->y - view->saved_geometry.y - th,
 				.width = saved_buf->width + 2 * tw,
 				.height = saved_buf->height + 2 * th,
 			};
@@ -261,18 +261,7 @@ static void apply_container_state(struct sway_container *container,
 	// the container. This is important for fullscreen views which
 	// refuse to resize to the size of the output.
 	if (view && view->surface) {
-		if (view->geometry.width < container->current.content_width) {
-			container->surface_x = container->current.content_x +
-				(container->current.content_width - view->geometry.width) / 2;
-		} else {
-			container->surface_x = container->current.content_x;
-		}
-		if (view->geometry.height < container->current.content_height) {
-			container->surface_y = container->current.content_y +
-				(container->current.content_height - view->geometry.height) / 2;
-		} else {
-			container->surface_y = container->current.content_y;
-		}
+		view_center_surface(view);
 	}
 
 	if (!container->node.destroying) {

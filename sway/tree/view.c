@@ -872,19 +872,21 @@ void view_unmap(struct sway_view *view) {
 	view->surface = NULL;
 }
 
-void view_update_size(struct sway_view *view, int width, int height) {
+void view_update_size(struct sway_view *view) {
 	struct sway_container *con = view->container;
+	con->content_width = view->geometry.width;
+	con->content_height = view->geometry.height;
+	container_set_geometry_from_content(con);
+}
 
-	if (container_is_floating(con)) {
-		con->content_width = width;
-		con->content_height = height;
-		container_set_geometry_from_content(con);
-	} else {
-		con->surface_x = con->content_x + (con->content_width - width) / 2;
-		con->surface_y = con->content_y + (con->content_height - height) / 2;
-		con->surface_x = fmax(con->surface_x, con->content_x);
-		con->surface_y = fmax(con->surface_y, con->content_y);
-	}
+void view_center_surface(struct sway_view *view) {
+	struct sway_container *con = view->container;
+	// We always center the current coordinates rather than the next, as the
+	// geometry immediately affects the currently active rendering.
+	con->surface_x = fmax(con->current.content_x, con->current.content_x +
+			(con->current.content_width - view->geometry.width) / 2);
+	con->surface_y = fmax(con->current.content_y, con->current.content_y +
+			(con->current.content_height - view->geometry.height) / 2);
 }
 
 static const struct sway_view_child_impl subsurface_impl;
@@ -1350,8 +1352,8 @@ static void view_save_buffer_iterator(struct wlr_surface *surface,
 		saved_buffer->buffer = surface->buffer;
 		saved_buffer->width = surface->current.width;
 		saved_buffer->height = surface->current.height;
-		saved_buffer->x = sx;
-		saved_buffer->y = sy;
+		saved_buffer->x = view->container->surface_x + sx;
+		saved_buffer->y = view->container->surface_y + sy;
 		saved_buffer->transform = surface->current.transform;
 		wlr_surface_get_buffer_source_box(surface, &saved_buffer->source_box);
 		wl_list_insert(&view->saved_buffers, &saved_buffer->link);
