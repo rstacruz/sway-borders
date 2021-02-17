@@ -812,12 +812,12 @@ struct border_textures *get_border_textures_for_container(
 	if (container_has_focused_child(con) || con->current.focused) {
 		return &config->border_textures.focused;
 	}
-	if (!con->children) {
+	if (!con->pending.children) {
 		return &config->border_textures.unfocused;
 	}
 
-	for (int i = 0; i < con->children->length; ++i) {
-		struct sway_container *child = con->children->items[i];
+	for (int i = 0; i < con->pending.children->length; ++i) {
+		struct sway_container *child = con->pending.children->items[i];
 		if (child == con->current.focused_inactive_child) {
 			return &config->border_textures.focused_inactive;
 		}
@@ -830,7 +830,7 @@ struct border_textures *get_border_textures_for_container(
  */
 static void render_border_textures_for_container(struct sway_container *con,
 		struct sway_output *output, pixman_region32_t *damage) {
-	if (!con->workspace) {
+	if (!con->pending.workspace) {
 		return;
 	}
 
@@ -840,11 +840,11 @@ static void render_border_textures_for_container(struct sway_container *con,
 		if (layout == L_TABBED || layout == L_STACKED) {
 			return;
 		}
-		temp = temp->parent;
+		temp = temp->pending.parent;
 	}
 
-	enum sway_container_layout ws_layout = con->workspace->layout;
-	if ((con->layout == L_VERT || con->layout == L_HORIZ) &&
+	enum sway_container_layout ws_layout = con->pending.workspace->layout;
+	if ((con->pending.layout == L_VERT || con->pending.layout == L_HORIZ) &&
 			(ws_layout == L_VERT || ws_layout == L_HORIZ)) {
 		return;
 	}
@@ -1170,7 +1170,7 @@ static void render_floating(struct sway_output *soutput,
 			}
 			for (int k = 0; k < ws->current.floating->length; ++k) {
 				struct sway_container *floater = ws->current.floating->items[k];
-				if (floater->fullscreen_mode != FULLSCREEN_NONE) {
+				if (floater->current.fullscreen_mode != FULLSCREEN_NONE) {
 					continue;
 				}
 				render_floating_container(soutput, damage, floater);

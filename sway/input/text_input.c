@@ -92,13 +92,18 @@ static void relay_send_im_state(struct sway_input_method_relay *relay,
 		return;
 	}
 	// TODO: only send each of those if they were modified
-	wlr_input_method_v2_send_surrounding_text(input_method,
-		input->current.surrounding.text, input->current.surrounding.cursor,
-		input->current.surrounding.anchor);
+	if (input->active_features & WLR_TEXT_INPUT_V3_FEATURE_SURROUNDING_TEXT) {
+		wlr_input_method_v2_send_surrounding_text(input_method,
+			input->current.surrounding.text, input->current.surrounding.cursor,
+			input->current.surrounding.anchor);
+	}
 	wlr_input_method_v2_send_text_change_cause(input_method,
 		input->current.text_change_cause);
-	wlr_input_method_v2_send_content_type(input_method,
-		input->current.content_type.hint, input->current.content_type.purpose);
+	if (input->active_features & WLR_TEXT_INPUT_V3_FEATURE_CONTENT_TYPE) {
+		wlr_input_method_v2_send_content_type(input_method,
+			input->current.content_type.hint,
+			input->current.content_type.purpose);
+	}
 	wlr_input_method_v2_send_done(input_method);
 	// TODO: pass intent, display popup size
 }
@@ -144,6 +149,10 @@ static void handle_text_input_disable(struct wl_listener *listener,
 		void *data) {
 	struct sway_text_input *text_input = wl_container_of(listener, text_input,
 		text_input_disable);
+	if (text_input->input->focused_surface == NULL) {
+		sway_log(SWAY_DEBUG, "Disabling text input, but no longer focused");
+		return;
+	}
 	relay_disable_text_input(text_input->relay, text_input);
 }
 
