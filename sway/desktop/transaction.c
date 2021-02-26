@@ -35,6 +35,7 @@ struct sway_transaction_instruction {
 		struct sway_container_state container_state;
 	};
 	uint32_t serial;
+	bool server_request;
 	bool waiting;
 };
 
@@ -165,7 +166,7 @@ static void copy_container_state(struct sway_container *container,
 }
 
 static void transaction_add_node(struct sway_transaction *transaction,
-		struct sway_node *node) {
+		struct sway_node *node, bool server_request) {
 	struct sway_transaction_instruction *instruction = NULL;
 
 	// Check if we have an instruction for this node already, in which case we
@@ -188,9 +189,12 @@ static void transaction_add_node(struct sway_transaction *transaction,
 		}
 		instruction->transaction = transaction;
 		instruction->node = node;
+		instruction->server_request = server_request;
 
 		list_add(transaction->instructions, instruction);
 		node->ntxnrefs++;
+	} else if (server_request) {
+		instruction->server_request = true;
 	}
 
 	switch (node->type) {
@@ -264,6 +268,13 @@ static void apply_container_state(struct sway_container *container,
 		}
 	}
 
+	// If the view hasn't responded to the configure, center it within
+	// the container. This is important for fullscreen views which
+	// refuse to resize to the size of the output.
+	if (view && view->surface) {
+		view_center_surface(view);
+	}
+
 	// Damage the new location
 	desktop_damage_whole_container(container);
 	if (view && view->surface) {
@@ -275,13 +286,6 @@ static void apply_container_state(struct sway_container *container,
 			.height = surface->current.height + 2 * th,
 		};
 		desktop_damage_box(&box);
-	}
-
-	// If the view hasn't responded to the configure, center it within
-	// the container. This is important for fullscreen views which
-	// refuse to resize to the size of the output.
-	if (view && view->surface) {
-		view_center_surface(view);
 	}
 
 	if (!container->node.destroying) {
@@ -368,6 +372,9 @@ static bool should_configure(struct sway_node *node,
 		return false;
 	}
 	if (node->destroying) {
+		return false;
+	}
+	if (!instruction->server_request) {
 		return false;
 	}
 	struct sway_container_state *cstate = &node->sway_container->current;
@@ -520,15 +527,7 @@ void transaction_notify_view_ready_by_geometry(struct sway_view *view,
 	}
 }
 
-void transaction_notify_view_ready_immediately(struct sway_view *view) {
-	struct sway_transaction_instruction *instruction =
-			view->container->node.instruction;
-	if (instruction != NULL) {
-		set_instruction_ready(instruction);
-	}
-}
-
-void transaction_commit_dirty(void) {
+static void _transaction_commit_dirty(bool server_request) {
 	if (!server.dirty_nodes->length) {
 		return;
 	}
@@ -542,10 +541,18 @@ void transaction_commit_dirty(void) {
 
 	for (int i = 0; i < server.dirty_nodes->length; ++i) {
 		struct sway_node *node = server.dirty_nodes->items[i];
-		transaction_add_node(server.pending_transaction, node);
+		transaction_add_node(server.pending_transaction, node, server_request);
 		node->dirty = false;
 	}
 	server.dirty_nodes->length = 0;
 
 	transaction_commit_pending();
+}
+
+void transaction_commit_dirty(void) {
+	_transaction_commit_dirty(true);
+}
+
+void transaction_commit_dirty_client(void) {
+	_transaction_commit_dirty(false);
 }

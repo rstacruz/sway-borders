@@ -35,27 +35,30 @@ if is_freebsd
 	add_project_arguments('-D_C11_SOURCE', language: 'c')
 endif
 
-jsonc          = dependency('json-c', version: '>=0.13')
-pcre           = dependency('libpcre')
+jsonc = dependency('json-c', version: '>=0.13')
+pcre = dependency('libpcre')
 wayland_server = dependency('wayland-server')
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
-wayland_egl    = dependency('wayland-egl')
+wayland_egl = dependency('wayland-egl')
 wayland_protos = dependency('wayland-protocols', version: '>=1.14')
-xkbcommon      = dependency('xkbcommon')
-cairo          = dependency('cairo')
-pango          = dependency('pango')
-pangocairo     = dependency('pangocairo')
-gdk_pixbuf     = dependency('gdk-pixbuf-2.0', required: get_option('gdk-pixbuf'))
-pixman         = dependency('pixman-1')
-glesv2         = dependency('glesv2')
-libevdev       = dependency('libevdev')
-libinput       = dependency('libinput', version: '>=1.6.0')
-xcb            = dependency('xcb', required: get_option('xwayland'))
-bash_comp      = dependency('bash-completion', required: false)
-fish_comp      = dependency('fish', required: false)
-math           = cc.find_library('m')
-rt             = cc.find_library('rt')
+xkbcommon = dependency('xkbcommon')
+cairo = dependency('cairo')
+pango = dependency('pango')
+pangocairo = dependency('pangocairo')
+gdk_pixbuf = dependency('gdk-pixbuf-2.0', required: get_option('gdk-pixbuf'))
+pixman = dependency('pixman-1')
+glesv2 = dependency('glesv2')
+libevdev = dependency('libevdev')
+libinput = dependency('libinput', version: '>=1.6.0')
+xcb = dependency('xcb', required: get_option('xwayland'))
+drm_full = dependency('libdrm') # only needed for drm_fourcc.h
+drm = drm_full.partial_dependency(compile_args: true, includes: true)
+libudev = dependency('libudev')
+bash_comp = dependency('bash-completion', required: false)
+fish_comp = dependency('fish', required: false)
+math = cc.find_library('m')
+rt = cc.find_library('rt')
 
 # Try first to find wlroots as a subproject, then as a system dependency
 wlroots_version = ['>=0.12.0', '<0.13.0']
@@ -65,26 +68,23 @@ wlroots_proj = subproject(
 	required: false,
 	version: wlroots_version,
 )
+if wlroots_proj.found()
+	wlroots = wlroots_proj.get_variable('wlroots')
+else
+	wlroots = dependency('wlroots', version: wlroots_version)
+endif
+
 wlroots_features = {
 	'xwayland': false,
 	'systemd': false,
 	'elogind': false,
 	'libseat': false,
 }
-if wlroots_proj.found()
-	wlroots = wlroots_proj.get_variable('wlroots')
-	wlroots_conf = wlroots_proj.get_variable('conf_data')
-	foreach name, _ : wlroots_features
-		has = wlroots_conf.get('WLR_HAS_' + name.to_upper()) == 1
-		wlroots_features += { name: has }
-	endforeach
-else
-	wlroots = dependency('wlroots', version: wlroots_version)
-	foreach name, _ : wlroots_features
-		has = cc.get_define('WLR_HAS_' + name.to_upper(), prefix: '#include <wlr/config.h>', dependencies: wlroots) == '1'
-		wlroots_features += { name: has }
-	endforeach
-endif
+foreach name, _ : wlroots_features
+	var_name = 'have_' + name.underscorify()
+	have = wlroots.get_variable(pkgconfig: var_name, internal: var_name) == 'true'
+	wlroots_features += { name: have }
+endforeach
 
 if get_option('xwayland').enabled() and not wlroots_features['xwayland']
 	error('Cannot enable Xwayland in sway: wlroots has been built without Xwayland support')

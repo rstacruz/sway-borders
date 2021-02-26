@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
+#include <drm_fourcc.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -415,6 +416,28 @@ void container_for_each_child(struct sway_container *container,
 			container_for_each_child(child, f, data);
 		}
 	}
+}
+
+struct sway_container *container_obstructing_fullscreen_container(struct sway_container *container)
+{
+	struct sway_workspace *workspace = container->pending.workspace;
+
+	if (workspace && workspace->fullscreen && !container_is_fullscreen_or_child(container)) {
+		if (container_is_transient_for(container, workspace->fullscreen)) {
+			return NULL;
+		}
+		return workspace->fullscreen;
+	}
+
+	struct sway_container *fullscreen_global = root->fullscreen_global;
+	if (fullscreen_global && container != fullscreen_global && !container_has_ancestor(container, fullscreen_global)) {
+		if (container_is_transient_for(container, fullscreen_global)) {
+			return NULL;
+		}
+		return fullscreen_global;
+	}
+
+	return NULL;
 }
 
 bool container_has_ancestor(struct sway_container *descendant,
@@ -851,6 +874,17 @@ void container_set_geometry_from_content(struct sway_container *con) {
 bool container_is_floating(struct sway_container *container) {
 	if (!container->pending.parent && container->pending.workspace &&
 			list_find(container->pending.workspace->floating, container) != -1) {
+		return true;
+	}
+	if (container->scratchpad) {
+		return true;
+	}
+	return false;
+}
+
+bool container_is_current_floating(struct sway_container *container) {
+	if (!container->current.parent && container->current.workspace &&
+			list_find(container->current.workspace->floating, container) != -1) {
 		return true;
 	}
 	if (container->scratchpad) {
@@ -1592,7 +1626,7 @@ static void update_marks_texture(struct sway_container *con,
 	struct wlr_renderer *renderer = wlr_backend_get_renderer(
 			output->wlr_output->backend);
 	*texture = wlr_texture_from_pixels(
-			renderer, WL_SHM_FORMAT_ARGB8888, stride, width, height, data);
+			renderer, DRM_FORMAT_ARGB8888, stride, width, height, data);
 	cairo_surface_destroy(surface);
 	g_object_unref(pango);
 	cairo_destroy(cairo);

@@ -164,6 +164,11 @@ void container_for_each_child(struct sway_container *container,
 		void (*f)(struct sway_container *container, void *data), void *data);
 
 /**
+ * Returns the fullscreen container obstructing this container if it exists.
+ */
+struct sway_container *container_obstructing_fullscreen_container(struct sway_container *container);
+
+/**
  * Returns true if the given container is an ancestor of this container.
  */
 bool container_has_ancestor(struct sway_container *container,
@@ -210,8 +215,15 @@ void container_set_geometry_from_content(struct sway_container *con);
 /**
  * Determine if the given container is itself floating.
  * This will return false for any descendants of a floating container.
+ *
+ * Uses pending container state.
  */
 bool container_is_floating(struct sway_container *container);
+
+/**
+ * Same as above, but for current container state.
+ */
+bool container_is_current_floating(struct sway_container *container);
 
 /**
  * Get a container's box in layout coordinates.
@@ -280,6 +292,7 @@ bool container_is_fullscreen_or_child(struct sway_container *container);
 /**
  * Return the output which will be used for scale purposes.
  * This is the most recently entered output.
+ * If the container is not on any output, return NULL.
  */
 struct sway_output *container_get_effective_output(struct sway_container *con);
 

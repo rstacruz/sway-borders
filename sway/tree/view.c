@@ -465,6 +465,9 @@ static void view_subsurface_create(struct sway_view *view,
 static void view_init_subsurfaces(struct sway_view *view,
 	struct wlr_surface *surface);
 
+static void view_child_init_subsurfaces(struct sway_view_child *view_child,
+	struct wlr_surface *surface);
+
 static void view_handle_surface_new_subsurface(struct wl_listener *listener,
 		void *data) {
 	struct sway_view *view =
@@ -982,8 +985,18 @@ static void view_child_subsurface_create(struct sway_view_child *child,
 	view_child_damage(&subsurface->child, true);
 }
 
+static bool view_child_is_mapped(struct sway_view_child *child) {
+	while (child) {
+		if (!child->mapped) {
+			return false;
+		}
+		child = child->parent;
+	}
+	return true;
+}
+
 static void view_child_damage(struct sway_view_child *child, bool whole) {
-	if (!child || !child->mapped || !child->view || !child->view->container) {
+	if (!child || !view_child_is_mapped(child) || !child->view || !child->view->container) {
 		return;
 	}
 	int sx, sy;
@@ -1020,6 +1033,14 @@ static void view_init_subsurfaces(struct sway_view *view,
 	struct wlr_subsurface *subsurface;
 	wl_list_for_each(subsurface, &surface->subsurfaces, parent_link) {
 		view_subsurface_create(view, subsurface);
+	}
+}
+
+static void view_child_init_subsurfaces(struct sway_view_child *view_child,
+		struct wlr_surface *surface) {
+	struct wlr_subsurface *subsurface;
+	wl_list_for_each(subsurface, &surface->subsurfaces, parent_link) {
+		view_child_subsurface_create(view_child, subsurface);
 	}
 }
 
@@ -1078,11 +1099,11 @@ void view_child_init(struct sway_view_child *child,
 		wlr_surface_send_enter(child->surface, workspace->output->wlr_output);
 	}
 
-	view_init_subsurfaces(child->view, surface);
+	view_child_init_subsurfaces(child, surface);
 }
 
 void view_child_destroy(struct sway_view_child *child) {
-	if (child->mapped && child->view->container != NULL) {
+	if (view_child_is_mapped(child) && child->view->container != NULL) {
 		view_child_damage(child, true);
 	}
 
@@ -1095,6 +1116,9 @@ void view_child_destroy(struct sway_view_child *child) {
 	wl_list_for_each_safe(subchild, tmpchild, &child->children, link) {
 		wl_list_remove(&subchild->link);
 		subchild->parent = NULL;
+		// The subchild lost its parent link, so it cannot see that the parent
+		// is unmapped. Unmap it directly.
+		subchild->mapped = false;
 	}
 
 	wl_list_remove(&child->surface_commit.link);
