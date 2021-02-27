@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include <wlr/render/wlr_renderer.h>
+#include <drm_fourcc.h>
 #include <string.h>
 #include "cairo.h"
 #include "log.h"
@@ -12,7 +13,7 @@ static void apply_border_textures_for_class(struct border_textures *class) {
 	struct sway_output *output = root->outputs->items[0];
 	struct wlr_renderer *renderer = wlr_backend_get_renderer(
 			output->wlr_output->backend);
-	class->texture = wlr_texture_from_pixels(renderer, WL_SHM_FORMAT_ARGB8888,
+	class->texture = wlr_texture_from_pixels(renderer, DRM_FORMAT_ARGB8888,
 		cairo_image_surface_get_width(class->image_surface) * 4,
 		cairo_image_surface_get_width(class->image_surface),
 		cairo_image_surface_get_height(class->image_surface),
