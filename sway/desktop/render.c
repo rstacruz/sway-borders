@@ -906,6 +906,9 @@ static void render_border_textures_for_workspace(struct sway_output *output,
 		workspace_get_box(ws, &box);
 
 		struct sway_container *con = ws->tiling->items[0];
+		if (ws->tiling->length == 0) {
+			return;
+		}
 		struct border_textures *textures = get_border_textures_for_container(con);
 		render_border_textures(output, damage, &box, textures->texture, con->alpha);
 	}
