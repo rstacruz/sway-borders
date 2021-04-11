@@ -1,7 +1,7 @@
 project(
 	'sway',
 	'c',
-	version: '1.6-rc2',
+	version: '1.6',
 	license: 'MIT',
 	meson_version: '>=0.53.0',
 	default_options: [
@@ -61,7 +61,7 @@ math = cc.find_library('m')
 rt = cc.find_library('rt')
 
 # Try first to find wlroots as a subproject, then as a system dependency
-wlroots_version = ['>=0.12.0', '<0.13.0']
+wlroots_version = ['>=0.14.0', '<0.15.0']
 wlroots_proj = subproject(
 	'wlroots',
 	default_options: ['examples=false'],
@@ -76,8 +76,6 @@ endif
 
 wlroots_features = {
 	'xwayland': false,
-	'systemd': false,
-	'elogind': false,
 	'libseat': false,
 }
 foreach name, _ : wlroots_features
@@ -318,7 +316,7 @@ summary({
 	'man-pages': scdoc.found(),
 }, bool_yn: true)
 
-if not wlroots_features['systemd'] and not wlroots_features['elogind'] and not wlroots_features['libseat']
+if not wlroots_features['libseat']
 	warning('The sway binary must be setuid when compiled without (e)logind or libseat')
 	warning('You must do this manually post-install: chmod a+s /path/to/sway')
 endif
