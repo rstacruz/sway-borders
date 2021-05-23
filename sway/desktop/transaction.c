@@ -234,7 +234,8 @@ static void apply_container_state(struct sway_container *container,
 	int tw = 0, th = 0;
 	struct wlr_texture *texture = config->border_textures.focused.texture;
 	if (texture) {
-		wlr_texture_get_size(texture, &tw, &th);
+		tw = texture->width;
+		th = texture->height;
 	}
 
 	struct sway_view *view = container->view;

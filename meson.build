@@ -76,7 +76,6 @@ endif
 
 wlroots_features = {
 	'xwayland': false,
-	'libseat': false,
 }
 foreach name, _ : wlroots_features
 	var_name = 'have_' + name.underscorify()
@@ -311,12 +310,7 @@ endif
 summary({
 	'xwayland': have_xwayland,
 	'gdk-pixbuf': gdk_pixbuf.found(),
-	'sd-bus': sdbus.found(),
 	'tray': have_tray,
 	'man-pages': scdoc.found(),
 }, bool_yn: true)
 
-if not wlroots_features['libseat']
-	warning('The sway binary must be setuid when compiled without (e)logind or libseat')
-	warning('You must do this manually post-install: chmod a+s /path/to/sway')
-endif
