@@ -7,8 +7,8 @@
 #include <time.h>
 #include <wlr/render/wlr_texture.h>
 #include <wlr/interfaces/wlr_switch.h>
-#include <wlr/types/wlr_box.h>
 #include <wlr/types/wlr_tablet_tool.h>
+#include <wlr/util/box.h>
 #include <xkbcommon/xkbcommon.h>
 #include "../include/config.h"
 #include "list.h"
