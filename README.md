@@ -59,10 +59,10 @@ Unlike pixel borders, the border images will overflow into gaps, so you may have
 
 To use this in your config, you would probably use the following:
 ```
-border_images.focused /some/folder/
-border_images.focused_inactive /some/folder/
-border_images.unfocused /some/folder/
-border_images.urgent /some/folder/
+border_images.focused /some/folder/image.png
+border_images.focused_inactive /some/folder/image.png
+border_images.unfocused /some/folder/image.png
+border_images.urgent /some/folder/image.png
 ```
 
 The [`/contrib/borders/` folder](https://github.com/TheAvidDev/sway-borders/tree/master/contrib/borders/) contains some example and community contributed border images, alongside screenshots. Feel free to add your own and make a PR!
