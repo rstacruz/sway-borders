@@ -162,13 +162,15 @@ static void arrange_layer(struct sway_output *output, struct wl_list *list,
 		} else if ((state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM)) {
 			box.y -= state->margin.bottom;
 		}
-		if (box.width < 0 || box.height < 0) {
-			// TODO: Bubble up a protocol error?
-			wlr_layer_surface_v1_close(layer);
+		if (!sway_assert(box.width >= 0 && box.height >= 0,
+				"Expected layer surface to have positive size")) {
 			continue;
 		}
 		// Apply
 		sway_layer->geo = box;
+		wlr_surface_get_extends(layer->surface, &sway_layer->extent);
+		sway_layer->extent.x += box.x;
+		sway_layer->extent.y += box.y;
 		apply_exclusive(usable_area, state->anchor, state->exclusive_zone,
 				state->margin.top, state->margin.right,
 				state->margin.bottom, state->margin.left);
@@ -284,7 +286,7 @@ static void handle_output_destroy(struct wl_listener *listener, void *data) {
 	}
 
 	sway_layer->layer_surface->output = NULL;
-	wlr_layer_surface_v1_close(sway_layer->layer_surface);
+	wlr_layer_surface_v1_destroy(sway_layer->layer_surface);
 }
 
 static void handle_surface_commit(struct wl_listener *listener, void *data) {
@@ -297,11 +299,11 @@ static void handle_surface_commit(struct wl_listener *listener, void *data) {
 	}
 
 	struct sway_output *output = wlr_output->data;
-	struct wlr_box old_geo = layer->geo;
+	struct wlr_box old_extent = layer->extent;
 	arrange_layers(output);
 
-	bool geo_changed =
-		memcmp(&old_geo, &layer->geo, sizeof(struct wlr_box)) != 0;
+	bool extent_changed =
+		memcmp(&old_extent, &layer->extent, sizeof(struct wlr_box)) != 0;
 	bool layer_changed = layer->layer != layer_surface->current.layer;
 	if (layer_changed) {
 		wl_list_remove(&layer->link);
@@ -309,9 +311,8 @@ static void handle_surface_commit(struct wl_listener *listener, void *data) {
 			&layer->link);
 		layer->layer = layer_surface->current.layer;
 	}
-	if (geo_changed || layer_changed) {
-		output_damage_surface(output, old_geo.x, old_geo.y,
-			layer_surface->surface, true);
+	if (extent_changed || layer_changed) {
+		output_damage_box(output, &old_extent);
 		output_damage_surface(output, layer->geo.x, layer->geo.y,
 			layer_surface->surface, true);
 	} else {
@@ -621,7 +622,7 @@ void handle_layer_shell_surface(struct wl_listener *listener, void *data) {
 				sway_log(SWAY_ERROR,
 						"no output to auto-assign layer surface '%s' to",
 						layer_surface->namespace);
-				wlr_layer_surface_v1_close(layer_surface);
+				wlr_layer_surface_v1_destroy(layer_surface);
 				return;
 			}
 			output = root->outputs->items[0];
