@@ -560,8 +560,7 @@ static void render_titlebar(struct sway_output *output,
 
 		// The title texture might be shorter than the config->font_height,
 		// in which case we need to pad it above and below.
-		int ob_padding_above = round((config->font_baseline -
-					con->title_baseline + titlebar_v_padding -
+		int ob_padding_above = round((titlebar_v_padding -
 					titlebar_border_thickness) * output_scale);
 		int ob_padding_below = ob_bg_height - ob_padding_above -
 			texture_box.height;
@@ -1250,6 +1249,12 @@ void output_render(struct sway_output *output, struct timespec *when,
 
 	wlr_renderer_begin(renderer, wlr_output->width, wlr_output->height);
 
+	if (debug.damage == DAMAGE_RERENDER) {
+		int width, height;
+		wlr_output_transformed_resolution(wlr_output, &width, &height);
+		pixman_region32_union_rect(damage, damage, 0, 0, width, height);
+	}
+
 	if (!pixman_region32_not_empty(damage)) {
 		// Output isn't damaged but needs buffer swap
 		goto renderer_end;
@@ -1257,10 +1262,6 @@ void output_render(struct sway_output *output, struct timespec *when,
 
 	if (debug.damage == DAMAGE_HIGHLIGHT) {
 		wlr_renderer_clear(renderer, (float[]){1, 1, 0, 1});
-	} else if (debug.damage == DAMAGE_RERENDER) {
-		int width, height;
-		wlr_output_transformed_resolution(wlr_output, &width, &height);
-		pixman_region32_union_rect(damage, damage, 0, 0, width, height);
 	}
 
 	if (output_has_opaque_overlay_layer_surface(output)) {
@@ -1361,7 +1362,7 @@ renderer_end:
 	wlr_region_transform(&frame_damage, &output->damage->current,
 		transform, width, height);
 
-	if (debug.damage == DAMAGE_HIGHLIGHT) {
+	if (debug.damage != DAMAGE_DEFAULT) {
 		pixman_region32_union_rect(&frame_damage, &frame_damage,
 			0, 0, wlr_output->width, wlr_output->height);
 	}

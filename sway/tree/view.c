@@ -901,30 +901,19 @@ void view_center_surface(struct sway_view *view) {
 
 static const struct sway_view_child_impl subsurface_impl;
 
-static void subsurface_get_root_coords(struct sway_view_child *child,
-		int *root_sx, int *root_sy) {
+static void subsurface_get_view_coords(struct sway_view_child *child,
+		int *sx, int *sy) {
 	struct wlr_surface *surface = child->surface;
-	*root_sx = -child->view->geometry.x;
-	*root_sy = -child->view->geometry.y;
-
 	if (child->parent && child->parent->impl &&
-			child->parent->impl->get_root_coords) {
-		int sx, sy;
-		child->parent->impl->get_root_coords(child->parent, &sx, &sy);
-		*root_sx += sx;
-		*root_sy += sy;
+			child->parent->impl->get_view_coords) {
+		child->parent->impl->get_view_coords(child->parent, sx, sy);
 	} else {
-		while (surface && wlr_surface_is_subsurface(surface)) {
-			struct wlr_subsurface *subsurface =
-				wlr_subsurface_from_wlr_surface(surface);
-			if (subsurface == NULL) {
-				break;
-			}
-			*root_sx += subsurface->current.x;
-			*root_sy += subsurface->current.y;
-			surface = subsurface->parent;
-		}
+		*sx = *sy = 0;
 	}
+	struct wlr_subsurface *subsurface =
+		wlr_subsurface_from_wlr_surface(surface);
+	*sx += subsurface->current.x;
+	*sy += subsurface->current.y;
 }
 
 static void subsurface_destroy(struct sway_view_child *child) {
@@ -938,7 +927,7 @@ static void subsurface_destroy(struct sway_view_child *child) {
 }
 
 static const struct sway_view_child_impl subsurface_impl = {
-	.get_root_coords = subsurface_get_root_coords,
+	.get_view_coords = subsurface_get_view_coords,
 	.destroy = subsurface_destroy,
 };
 
@@ -1007,10 +996,12 @@ static void view_child_damage(struct sway_view_child *child, bool whole) {
 		return;
 	}
 	int sx, sy;
-	child->impl->get_root_coords(child, &sx, &sy);
+	child->impl->get_view_coords(child, &sx, &sy);
 	desktop_damage_surface(child->surface,
-			child->view->container->pending.content_x + sx,
-			child->view->container->pending.content_y + sy, whole);
+			child->view->container->pending.content_x -
+				child->view->geometry.x + sx,
+			child->view->container->pending.content_y -
+				child->view->geometry.y + sy, whole);
 }
 
 static void view_child_handle_surface_commit(struct wl_listener *listener,
@@ -1038,10 +1029,12 @@ static void view_child_handle_surface_destroy(struct wl_listener *listener,
 static void view_init_subsurfaces(struct sway_view *view,
 		struct wlr_surface *surface) {
 	struct wlr_subsurface *subsurface;
-	wl_list_for_each(subsurface, &surface->subsurfaces_below, parent_link) {
+	wl_list_for_each(subsurface, &surface->current.subsurfaces_below,
+			current.link) {
 		view_subsurface_create(view, subsurface);
 	}
-	wl_list_for_each(subsurface, &surface->subsurfaces_above, parent_link) {
+	wl_list_for_each(subsurface, &surface->current.subsurfaces_above,
+			current.link) {
 		view_subsurface_create(view, subsurface);
 	}
 }
@@ -1049,10 +1042,12 @@ static void view_init_subsurfaces(struct sway_view *view,
 static void view_child_init_subsurfaces(struct sway_view_child *view_child,
 		struct wlr_surface *surface) {
 	struct wlr_subsurface *subsurface;
-	wl_list_for_each(subsurface, &surface->subsurfaces_below, parent_link) {
+	wl_list_for_each(subsurface, &surface->current.subsurfaces_below,
+			current.link) {
 		view_child_subsurface_create(view_child, subsurface);
 	}
-	wl_list_for_each(subsurface, &surface->subsurfaces_above, parent_link) {
+	wl_list_for_each(subsurface, &surface->current.subsurfaces_above,
+			current.link) {
 		view_child_subsurface_create(view_child, subsurface);
 	}
 }
@@ -1285,8 +1280,7 @@ void view_update_title(struct sway_view *view, bool force) {
 		view->container->title = NULL;
 		view->container->formatted_title = NULL;
 	}
-	container_calculate_title_height(view->container);
-	config_update_font_height(false);
+	config_update_font_height();
 
 	// Update title after the global font height is updated
 	container_update_title_textures(view->container);
@@ -1402,7 +1396,7 @@ static void view_save_buffer_iterator(struct wlr_surface *surface,
 		saved_buffer->y = view->container->surface_y + sy;
 		saved_buffer->transform = surface->current.transform;
 		wlr_surface_get_buffer_source_box(surface, &saved_buffer->source_box);
-		wl_list_insert(&view->saved_buffers, &saved_buffer->link);
+		wl_list_insert(view->saved_buffers.prev, &saved_buffer->link);
 	}
 }
 
